@@ -62,23 +62,33 @@
 
 ## 实验结果
 
-### 性能对比 (AEP hourly dataset, 10000样本)
+### 综合性能对比（12个数据集的平均表现）
 
-| 模型 | RMSE | MAE | MAPE (%) | R² |
-|------|------|-----|----------|-----|
-| **LN-TSDM** | **726.40** | **622.94** | **4.25** | **0.8594** |
-| ElasticNet | 1306.06 | 1032.65 | 7.08 | 0.5456 |
-| Random Forest | 336.19 | 225.63 | 1.49 | 0.9699 |
+| 模型 | 平均RMSE | 平均MAE | 平均MAPE (%) | 平均R² |
+|------|----------|---------|--------------|--------|
+| **LN-TSDM** | **654.79** | **547.57** | **4.79** | **0.8874** |
+| ElasticNet | 1350.68 | 1076.85 | 9.62 | 0.5166 |
+| Random Forest | 269.95 | 175.65 | 1.69 | 0.9758 |
 
 ### 关键发现
 
-**LN-TSDM 相对 ElasticNet 的改进：**
-- ✅ RMSE 降低：**44.38%**
-- ✅ MAE 降低：**39.68%**
-- ✅ MAPE 降低：**40.06%**
-- ✅ R² 提升：**57.52%**
+**LN-TSDM 相对 ElasticNet 的平均改进（跨12个数据集）：**
+- ✅ RMSE 降低：**53.05%**
+- ✅ MAE 降低：**50.95%**
+- ✅ R² 提升：**74.75%**
+- ✅ MAPE 降低：**50.23%**
 
-**结论**：LN-TSDM模型显著优于单一ElasticNet模型，验证了线性-非线性分解建模策略的有效性。虽然Random Forest在该数据集上表现最佳，但LN-TSDM提供了可解释性更强的分解视角，适用于需要理解趋势和波动成分的应用场景。
+**数据集覆盖范围：**
+本实验在以下12个不同的电力负荷数据集上验证了LN-TSDM的有效性：
+- AEP, COMED, DAYTON, DEOK, DOM, DUQ
+- EKPC, FE, NI, PJME, PJMW, PJM_Load
+
+**最佳改进案例：**
+- EKPC数据集：RMSE降低 **69.11%**
+- PJME数据集：RMSE降低 **60.80%**
+- COMED数据集：RMSE降低 **58.39%**
+
+**结论**：LN-TSDM模型在所有12个数据集上都显著优于单一ElasticNet模型，平均改进超过50%，充分验证了线性-非线性分解建模策略的有效性和跨数据集的稳定性。该模型提供了可解释性更强的分解视角（趋势+残差），特别适用于需要理解时间序列内在结构的应用场景。
 
 ---
 
@@ -103,7 +113,7 @@ pip install -r requirements.txt
 
 ### 快速开始
 
-#### 1. 运行完整实验
+#### 1. 运行单数据集实验
 
 ```bash
 python run_experiment.py
@@ -114,7 +124,19 @@ python run_experiment.py
 - 训练LN-TSDM模型和基线模型
 - 生成性能对比报告和可视化结果
 
-#### 2. 使用LN-TSDM模型
+#### 2. 运行多数据集批量实验（推荐）⭐
+
+```bash
+python run_all_datasets_experiment.py
+```
+
+该命令将：
+- 对所有12个电力负荷数据集运行实验
+- 生成综合性能对比报告
+- 创建跨数据集的可视化图表
+- 输出汇总的改进率分析
+
+#### 3. 使用LN-TSDM模型
 
 ```python
 from ln_tsdm_model import LN_TSDM
@@ -138,7 +160,7 @@ model.fit(ts, lookback=24)
 predictions, linear_pred, nonlinear_pred = model.predict(ts, lookback=24)
 ```
 
-#### 3. 自定义参数
+#### 4. 自定义参数
 
 ```python
 # 高级配置
@@ -163,16 +185,25 @@ model = LN_TSDM(
 ## 文件结构
 
 ```
-├── ln_tsdm_model.py              # LN-TSDM模型核心实现
-├── run_experiment.py             # 实验运行脚本
-├── requirements.txt              # Python依赖包
-├── README.md                     # 项目说明文档
+├── ln_tsdm_model.py                       # LN-TSDM模型核心实现
+├── run_experiment.py                      # 单数据集实验运行脚本
+├── run_all_datasets_experiment.py         # 多数据集批量实验脚本 ⭐
+├── requirements.txt                       # Python依赖包
+├── README.md                              # 项目说明文档
 │
 ├── results_ln_tsdm_decomposition.png      # 时间序列分解可视化
 ├── results_predictions_comparison.png     # 预测结果对比图
 ├── results_metrics_comparison.png         # 性能指标对比图
 ├── results_metrics_comparison.csv         # 详细性能指标数据
-└── results_experiment_report.md           # 实验报告
+├── results_experiment_report.md           # 单数据集实验报告
+│
+└── results_all_datasets/                  # 多数据集实验结果目录 ⭐
+    ├── summary_report.md                  # 综合实验报告
+    ├── summary_rmse_comparison.png        # 所有数据集RMSE对比
+    ├── summary_r2_comparison.png          # 所有数据集R²对比
+    ├── summary_improvement_heatmap.png    # 改进率热力图
+    ├── all_datasets_metrics.csv           # 所有数据集详细指标
+    └── all_datasets_improvement.csv       # 所有数据集改进率
 ```
 
 ---
@@ -197,13 +228,23 @@ model = LN_TSDM(
 
 ### 2. `run_experiment.py`
 
-完整的实验流程：
+单数据集完整实验流程：
 1. 数据加载与划分
 2. 模型训练（LN-TSDM + 基线模型）
 3. 测试集预测
 4. 性能评估与对比
 5. 可视化结果生成
 6. 自动生成实验报告
+
+### 3. `run_all_datasets_experiment.py` ⭐
+
+多数据集批量实验流程：
+1. 遍历所有12个数据集
+2. 对每个数据集训练和评估模型
+3. 收集所有性能指标
+4. 生成综合对比可视化
+5. 创建跨数据集汇总报告
+6. 输出改进率热力图
 
 ---
 
